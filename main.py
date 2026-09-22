@@ -1,3 +1,4 @@
+import numpy as np
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -79,9 +80,30 @@ insight_box("insight_1")
 st.divider()
 
 # ---------------------------------------------------------
-# 2. 총 관객수 분포 - 히스토그램
+# 2. 장르 안의 영화 - 트리맵 (칸 크기 = 총 관객수)
 # ---------------------------------------------------------
-st.header("2️⃣ 총 관객수의 분포")
+st.header("2️⃣ 장르 안에 들어 있는 영화 (트리맵)")
+
+fig_treemap = px.treemap(
+    df,
+    path=[px.Constant("전체"), "genre", "movieNm"],
+    values="total_audi",
+    color="genre",
+    title="장르 안의 영화 - 칸 크기는 총 관객수",
+)
+fig_treemap.update_traces(
+    hovertemplate="%{label}<br>총 관객수: %{value:,.0f}명<extra></extra>"
+)
+st.plotly_chart(fig_treemap, use_container_width=True)
+
+insight_box("insight_2")
+
+st.divider()
+
+# ---------------------------------------------------------
+# 3. 총 관객수 분포 - 히스토그램 (+ 자동 계산 문구)
+# ---------------------------------------------------------
+st.header("3️⃣ 총 관객수의 분포")
 
 fig_hist = px.histogram(
     df,
@@ -93,24 +115,22 @@ fig_hist = px.histogram(
 fig_hist.update_layout(yaxis_title="영화 편수")
 st.plotly_chart(fig_hist, use_container_width=True)
 
-insight_box("insight_2")
+# 가장 영화가 몰려 있는 구간 계산
+audi_values = df["total_audi"].dropna().values
+counts, bin_edges = np.histogram(audi_values, bins=30)
+max_idx = counts.argmax()
+range_low, range_high = bin_edges[max_idx], bin_edges[max_idx + 1]
+movies_in_range = int(counts[max_idx])
 
-st.divider()
+# 가장 관객이 많은 영화 계산
+top_movie = df.loc[df["total_audi"].idxmax()]
 
-# ---------------------------------------------------------
-# 3. 장르별 총 관객수 분포 - 박스플롯
-# ---------------------------------------------------------
-st.header("3️⃣ 장르별 총 관객수 분포")
-
-fig_box = px.box(
-    df,
-    x="genre",
-    y="total_audi",
-    title="장르별 총 관객수 분포",
-    labels={"genre": "장르", "total_audi": "총 관객수"},
-    points="all",
+st.info(
+    f"📊 전체 216편 중 **{movies_in_range}편**이 총 관객수 "
+    f"**{range_low:,.0f}명 ~ {range_high:,.0f}명** 구간에 몰려 있습니다. "
+    f"가장 많은 관객을 동원한 영화는 **'{top_movie['movieNm']}'**"
+    f"(총 관객 {top_movie['total_audi']:,.0f}명)입니다."
 )
-st.plotly_chart(fig_box, use_container_width=True)
 
 insight_box("insight_3")
 
@@ -137,9 +157,73 @@ insight_box("insight_4")
 st.divider()
 
 # ---------------------------------------------------------
-# 5. 개봉 첫 주 관객과 총 관객수의 관계 (10위권 유지 일수로 크기 표현)
+# 5. 장르별 총 관객수 분포 - 박스플롯 (영화 10편 이상인 장르만)
 # ---------------------------------------------------------
-st.header("5️⃣ 개봉 첫 주 관객수와 총 관객수의 관계")
+st.header("5️⃣ 장르별 총 관객수 분포 (영화 10편 이상인 장르만)")
+
+genres_ge10 = genre_counts.loc[genre_counts["count"] >= 10, "genre"]
+df_box = df[df["genre"].isin(genres_ge10)]
+
+fig_box = px.box(
+    df_box,
+    x="genre",
+    y="total_audi",
+    points="outliers",
+    hover_data=["movieNm"],
+    title="장르별 총 관객수 분포 (영화 10편 이상인 장르)",
+    labels={"genre": "장르", "total_audi": "총 관객수"},
+)
+st.plotly_chart(fig_box, use_container_width=True)
+
+insight_box("insight_5")
+
+st.divider()
+
+# ---------------------------------------------------------
+# 6. 개봉일 스크린수 - 총 관객수 - 첫 주 관객수 관계 - 버블 그래프
+# ---------------------------------------------------------
+st.header("6️⃣ 개봉일 스크린수와 총 관객수의 관계 (버블 크기 = 첫 주 관객수)")
+
+fig_bubble1 = px.scatter(
+    df,
+    x="first_scrn",
+    y="total_audi",
+    size="first_week_audi",
+    color="genre",
+    hover_name="movieNm",
+    size_max=40,
+    title="개봉일 스크린수 vs 총 관객수 (버블 크기: 개봉 첫 주 관객수)",
+    labels={"first_scrn": "개봉일 스크린수", "total_audi": "총 관객수"},
+)
+st.plotly_chart(fig_bubble1, use_container_width=True)
+
+insight_box("insight_6")
+
+st.divider()
+
+# ---------------------------------------------------------
+# 7. 제작 국가 -> 장르 - 선버스트 (칸 크기 = 영화 편수)
+# ---------------------------------------------------------
+st.header("7️⃣ 제작 국가별 장르 구성 (선버스트)")
+
+fig_sunburst = px.sunburst(
+    df,
+    path=["nation", "genre"],
+    title="제작 국가 → 장르 - 칸 크기는 영화 편수",
+)
+fig_sunburst.update_traces(
+    hovertemplate="%{label}<br>편수: %{value}편<extra></extra>"
+)
+st.plotly_chart(fig_sunburst, use_container_width=True)
+
+insight_box("insight_7")
+
+st.divider()
+
+# ---------------------------------------------------------
+# 8. 개봉 첫 주 관객과 총 관객수의 관계 (10위권 유지 일수로 크기 표현)
+# ---------------------------------------------------------
+st.header("8️⃣ 개봉 첫 주 관객수와 총 관객수의 관계")
 
 fig_scatter2 = px.scatter(
     df,
@@ -153,4 +237,4 @@ fig_scatter2 = px.scatter(
 )
 st.plotly_chart(fig_scatter2, use_container_width=True)
 
-insight_box("insight_5")
+insight_box("insight_8")
