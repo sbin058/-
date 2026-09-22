@@ -221,9 +221,48 @@ insight_box("insight_7")
 st.divider()
 
 # ---------------------------------------------------------
-# 8. 개봉 첫 주 관객과 총 관객수의 관계 (10위권 유지 일수로 크기 표현)
+# 8. 나만의 질문 - 10위권에 오래 머문 영화는 총 관객도 많은가 (산점도)
 # ---------------------------------------------------------
-st.header("8️⃣ 개봉 첫 주 관객수와 총 관객수의 관계")
+st.header("8️⃣ 나만의 8번째 질문 — 만들어서 분석하기")
+
+my_question = "영화는 어느 계절에 개봉될 때 총 관객수가 많은가?"
+st.markdown(f"**내 질문:** {my_question}")
+st.caption(
+    "지금까지의 그래프는 genre·nation·first_scrn·first_week_audi·days_in_top10만 다뤘고 "
+    "openDt(개봉일)는 아직 쓰이지 않았습니다. 개봉일에서 '계절'을 뽑아 총 관객수와 비교해 보았습니다."
+)
+
+season_map = {
+    12: "겨울", 1: "겨울", 2: "겨울",
+    3: "봄", 4: "봄", 5: "봄",
+    6: "여름", 7: "여름", 8: "여름",
+    9: "가을", 10: "가을", 11: "가을",
+}
+season_order = ["봄", "여름", "가을", "겨울"]
+
+df["season"] = df["openDt"].dt.month.map(season_map)
+df_season = df.dropna(subset=["season", "total_audi"])
+
+fig_season = px.box(
+    df_season,
+    x="season",
+    y="total_audi",
+    points="outliers",
+    hover_data=["movieNm"],
+    category_orders={"season": season_order},
+    title=my_question,
+    labels={"season": "개봉 계절", "total_audi": "총 관객수"},
+)
+st.plotly_chart(fig_season, use_container_width=True)
+
+insight_box("insight_8")
+
+st.divider()
+
+# ---------------------------------------------------------
+# 9. 개봉 첫 주 관객과 총 관객수의 관계 (10위권 유지 일수로 크기 표현)
+# ---------------------------------------------------------
+st.header("9️⃣ 개봉 첫 주 관객수와 총 관객수의 관계")
 
 fig_scatter2 = px.scatter(
     df,
@@ -237,4 +276,4 @@ fig_scatter2 = px.scatter(
 )
 st.plotly_chart(fig_scatter2, use_container_width=True)
 
-insight_box("insight_8")
+insight_box("insight_9")
